@@ -1,44 +1,82 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from 'react-native-vector-icons';
-import SendPaymentScreen from './screens/SendPaymentScreen';
-import TransactionHistoryScreen from './screens/TransactionHistoryScreen';
-import SettingsScreen from './screens/SettingsScreen';
-import { colors } from './styles';
+// Polyfills
+import "./src/polyfills";
 
-const Tab = createBottomTabNavigator();
+import { StyleSheet, useColorScheme } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const App: React.FC = () => {
+import { ConnectionProvider } from "./src/utils/ConnectionProvider";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  DarkTheme as NavigationDarkTheme,
+  DefaultTheme as NavigationDefaultTheme,
+} from "@react-navigation/native";
+import {
+  PaperProvider,
+  MD3DarkTheme,
+  MD3LightTheme,
+  adaptNavigationTheme,
+} from "react-native-paper";
+import { AppNavigator } from "./src/navigators/AppNavigator";
+import { ClusterProvider } from "./src/components/cluster/cluster-data-access";
+
+const queryClient = new QueryClient();
+
+export default function App() {
+  const colorScheme = useColorScheme();
+  const { LightTheme, DarkTheme } = adaptNavigationTheme({
+    reactNavigationLight: NavigationDefaultTheme,
+    reactNavigationDark: NavigationDarkTheme,
+  });
+
+  const CombinedDefaultTheme = {
+    ...MD3LightTheme,
+    ...LightTheme,
+    colors: {
+      ...MD3LightTheme.colors,
+      ...LightTheme.colors,
+    },
+  };
+  const CombinedDarkTheme = {
+    ...MD3DarkTheme,
+    ...DarkTheme,
+    colors: {
+      ...MD3DarkTheme.colors,
+      ...DarkTheme.colors,
+    },
+  };
   return (
-    <NavigationContainer>
-      <Tab.Navigator
-        initialRouteName="Home"
-        screenOptions={({ route }) => ({
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName: string;
-            if (route.name === 'Home') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'History') {
-              iconName = focused ? 'time' : 'time-outline';
-            } else if (route.name === 'Settings') {
-              iconName = focused ? 'settings' : 'settings-outline';
-            }
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: colors.black,
-          tabBarInactiveTintColor: colors.lightGray,
-          tabBarStyle: {
-            backgroundColor: colors.white,
-          },
-        })}
-      >
-        <Tab.Screen name="Home" component={SendPaymentScreen} />
-        <Tab.Screen name="History" component={TransactionHistoryScreen} />
-        <Tab.Screen name="Settings" component={SettingsScreen} />
-      </Tab.Navigator>
-    </NavigationContainer>
+    <QueryClientProvider client={queryClient}>
+      <ClusterProvider>
+        <ConnectionProvider config={{ commitment: "processed" }}>
+          <SafeAreaView
+            style={[
+              styles.shell,
+              {
+                backgroundColor:
+                  colorScheme === "dark"
+                    ? MD3DarkTheme.colors.background
+                    : MD3LightTheme.colors.background,
+              },
+            ]}
+          >
+            <PaperProvider
+              theme={
+                colorScheme === "dark"
+                  ? CombinedDarkTheme
+                  : CombinedDefaultTheme
+              }
+            >
+              <AppNavigator />
+            </PaperProvider>
+          </SafeAreaView>
+        </ConnectionProvider>
+      </ClusterProvider>
+    </QueryClientProvider>
   );
-};
+}
 
-export default App;
+const styles = StyleSheet.create({
+  shell: {
+    flex: 1,
+  },
+});
